@@ -2,15 +2,15 @@ import requests
 from lxml import html
 
 def telegram_bot_sendtext(bot_message):
-    bot_token = '1884091453:AAHdylIwDNX_xhD3pvQNxiUHBFvLb9FkDJI'
-    bot_chatID = '1769102893'
+    bot_token = 'bot_token'
+    bot_chatID = 'Chat_ID'
     send_text = 'https://api.telegram.org/bot' + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&text=' + bot_message
 
     requests.get(send_text)
 
 
 def show_weather(city):
-    key = "b32cab708284c55424b0121226402e08"
+    key = "KEY"
     get_weather = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + key
     json_response = requests.get(get_weather).json()
     json_response = "আবহাওয়া পূর্বাভাস ( " + city + " )\n" +\
