@@ -1,16 +1,28 @@
 import requests
+import telebot
+import os
+from flask import Flask, request
 from lxml import html
+from threading import Thread
+from time import sleep
+
+
+TOKEN = ""
+
+bot = telebot.TeleBot(TOKEN)
+
+server = Flask(__name__)
+
+global chat_id
+
 
 def telegram_bot_sendtext(bot_message):
-    bot_token = 'bot_token'
-    bot_chatID = 'Chat_ID'
-    send_text = 'https://api.telegram.org/bot' + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&text=' + bot_message
-
-    requests.get(send_text)
+    global chat_id
+    bot.send_message(chat_id, bot_message)
 
 
 def show_weather(city):
-    key = "KEY"
+    key = ""
     get_weather = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + key
     json_response = requests.get(get_weather).json()
     json_response = "আবহাওয়া পূর্বাভাস ( " + city + " )\n" +\
@@ -22,17 +34,54 @@ def show_weather(city):
 
 
 def show_news():
-    page = requests.get("https://www.jamuna.tv/")
+    page = requests.get("https://www.prothomalo.com/")
 
     tree = html.fromstring(page.content)
 
-    news = tree.xpath('/html/body/main/section[1]/article[1]/div/div/h2/a/text()')[0] \
-           + "\n" + "`" +tree.xpath('/html/body/main/section[1]/article[1]/div/div/p[2]/text()')[0] + "`"
+    news = tree.xpath('/html/body/div[1]/div[9]/div[2]/div/div/div/div[1]/div/div[1]/div[1]/div[2]/h2/a/text()')[0] \
+           + "\n" + "`" + tree.xpath('/html/body/div[1]/div[9]/div[2]/div/div/div/div[1]/div/div[1]/div[1]/div[2]/p/a/text()')[0] + "`"
 
     return news
 
 
-telegram_bot_sendtext(show_weather('bogra'))
-telegram_bot_sendtext(show_news())
-# print(show_weather('bogra'))
+def send_updates():
+    telegram_bot_sendtext(show_weather('bogra'))
+    telegram_bot_sendtext(show_news())
+
+
+def scheduled_update():
+    while True:
+        send_updates()
+        sleep(300)
+
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    global chat_id
+    chat_id = message.chat.id
+    bot.reply_to(message, 'Hello, ' + message.from_user.first_name + "\n Welcome!")
+    Thread(target=scheduled_update).start()
+
+
+@bot.message_handler(commands=['updates'])
+def updates():
+    send_updates()
+
+
+@server.route('/' + TOKEN, methods=['POST'])
+def get_message():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+
+@server.route("/")
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url='https://telegram-msg-bot.herokuapp.com/' + TOKEN)
+    return "!", 200
+
+
+server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
 
